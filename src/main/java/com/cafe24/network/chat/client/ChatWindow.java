@@ -22,6 +22,8 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import com.cafe24.network.chat.server.ChatServer;
+
 public class ChatWindow {
 
 	private Frame frame;
@@ -93,11 +95,11 @@ public class ChatWindow {
 	}
 
 	private void finish() {
-		System.out.println("...........");
+		System.out.println(name + "님, 채팅을 종료합니다.");
 		try {
 			PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
 			pw.println("quit:" + name);
-			pw.flush();
+			//pw.flush();	// flush를 사용할 경우 퇴장 메시지가 두 번 broadcast된다.
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -121,6 +123,14 @@ public class ChatWindow {
 
 	private void sendMessage() {
 		String message = textField.getText();
+		if(message.length() > 3 && "/w ".equals(message.substring(0, 3))) {	// 귓속말 명령이라고 인식한다.
+			// 인자가 충분하지 못하다면 오류 메시지 없이 sendMessage 해버린다.
+			String[] whisperMessage = message.split(" ");
+			if(whisperMessage.length >= 3) {
+				whisperMessage(message);
+				return;
+			}
+		}
 		// 원본 메시지는 Base64로 인코딩하여 다른 문자 처리를 수월하게 한다.
 		String encodedMessage = new String(Base64.getEncoder().encodeToString(message.getBytes(StandardCharsets.UTF_8)));
 
@@ -134,9 +144,28 @@ public class ChatWindow {
 
 		textField.setText("");	// 채팅 보낸 후 TextField 비워줌
 		textField.requestFocus();
-
 		// test
 //		updateTextArea(message);
+	}
+
+	// 귓속말 처리. 코드 중복이 많지만 일단 기능 구현에 집중.
+	private void whisperMessage(String data) {
+		data = data.substring(3);
+		int blankIndex = data.indexOf(" ");
+		String receiverName = data.substring(0, blankIndex);
+		String message = data.substring(blankIndex + 1);
+		String encodedMessage = new String(Base64.getEncoder().encodeToString(message.getBytes(StandardCharsets.UTF_8)));
+
+		try {	// 소켓 받은 것을 이용하여 PrintWriter로 Server에 보낸다.
+			PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+			pw.println("whisper:" + name + ":" + receiverName + ":" + encodedMessage);
+			pw.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		textField.setText("");	// 채팅 보낸 후 TextField 비워줌
+		textField.requestFocus();
 	}
 
 	class ChatClientReceiveThread extends Thread {
@@ -151,7 +180,7 @@ public class ChatWindow {
 		public void run() {
 			while (true) {
 				try {
-					br = new BufferedReader(new InputStreamReader(socket.getInputStream(), "utf-8"));
+					br = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
 
 					String data = br.readLine();
 					textArea.append(data + "\n");

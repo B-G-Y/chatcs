@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class ChatServer {
@@ -13,7 +14,8 @@ public class ChatServer {
 
 	public static void main(String[] args) {
 		ServerSocket serverSocket = null;
-		List<Writer> listWriters = new ArrayList<Writer>();
+		//List<Writer> listWriters = new ArrayList<Writer>();
+		HashMap<Writer, String> writersHashMap = new HashMap<>();
 
 		try {
 			// 1. 서버 소켓 생성
@@ -25,7 +27,7 @@ public class ChatServer {
 			while (true) {
 				// 3. 요청 대기
 				Socket socket = serverSocket.accept();
-				new ChatServerReceiveThread(socket, listWriters).start();
+				new ChatServerReceiveThread(socket, writersHashMap).start();
 			}
 
 		} catch (IOException e) {

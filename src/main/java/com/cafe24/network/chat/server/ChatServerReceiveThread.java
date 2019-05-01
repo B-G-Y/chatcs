@@ -11,16 +11,18 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 
 public class ChatServerReceiveThread extends Thread {
 	private String nickname;
 	private Socket socket;
-	private List<Writer> listWriters;
+	//private List<Writer> listWriters;
+	private HashMap<Writer, String> writersHashMap;
 
-	public ChatServerReceiveThread(Socket socket, List<Writer> listWriters) {
+	public ChatServerReceiveThread(Socket socket, HashMap<Writer, String> writersHashMap) {
 		this.socket = socket;
-		this.listWriters = listWriters;
+		this.writersHashMap = writersHashMap;
 	}
 
 	@Override
@@ -36,7 +38,7 @@ public class ChatServerReceiveThread extends Thread {
 			while(true) {
 				String request = br.readLine();
 				if(request == null) {
-					ChatServer.log("클라이언트로부터 연결 끊김");
+					ChatServer.log("클라이언트(" + nickname + ")로부터 연결 끊김");
 					doQuit(pw);
 					break;
 				}
@@ -46,9 +48,19 @@ public class ChatServerReceiveThread extends Thread {
 				if("join".equals(tokens[0])) {
 					doJoin(tokens[1], pw);
 				} else if("message".equals(tokens[0])) {
-					doMessage(tokens[1]);
+					if(tokens.length < 2) {	// 아무것도 입력하지 않은 채로 send를 했을 경우, 빈 줄이 전달되도록 한다.
+						doMessage("");
+					} else {
+						doMessage(tokens[1]);
+					}
 				} else if("quit".equals(tokens[0])) {
 					doQuit(pw);
+				} else if("whisper".equals(tokens[0])) { 
+					if(tokens.length < 4) {	// 제대로 채워지지 않았을 경우, 귓속말 입력에 실패한다.
+						ChatServer.log("잘못된 명령어 입력 (" + tokens[0] + ")");
+					} else {
+						doWhisper(tokens[1], tokens[2], tokens[3]);
+					}
 				} else {
 					ChatServer.log("에러: 알 수 없는 요청 (" + tokens[0] + ")");
 				}
@@ -57,7 +69,7 @@ public class ChatServerReceiveThread extends Thread {
 			e.printStackTrace();
 		}
 	}
-	
+
 	// 입장
 	private void doJoin(String nickname, PrintWriter printWriter) {
 		this.nickname = nickname;
@@ -73,8 +85,9 @@ public class ChatServerReceiveThread extends Thread {
 //		printWriter.flush();
 	}
 	private void addWriter(Writer writer) {
-		synchronized(listWriters) {
-			listWriters.add(writer);
+		synchronized(writersHashMap) {
+			//listWriters.add(writer);
+			writersHashMap.put(writer, nickname);
 		}
 	}
 
@@ -87,8 +100,9 @@ public class ChatServerReceiveThread extends Thread {
 		
 	}
 	private void removeWriter(Writer writer) {
-		synchronized(listWriters) {
-			listWriters.remove(writer);
+		synchronized(writersHashMap) {
+			//listWriters.remove(writer);
+			writersHashMap.remove(writer);
 		}
 	}
 
@@ -96,14 +110,41 @@ public class ChatServerReceiveThread extends Thread {
 	private void doMessage(String data) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		// base64 decoding
-		String message = "[" + LocalDateTime.now().format(formatter) + "]" + nickname + ": " + new String(Base64.getDecoder().decode(data));
+		String message = "[" + LocalDateTime.now().format(formatter) + "]" + nickname + ": " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
 		broadcast(message);
+	}
+	
+	// 귓속말. 같은 닉네임 가진 사람한테 전부 귓속말이 간다.
+	// 역으로, donghwa라는 사람이 두 사람이 있는 경우, 둘 중 한 명이 귓속말을 보내면 나머지 한 명도 누군가가 귓속말을 보냈다는 사실을 알게 된다.
+	// 즉, 닉네임 중복 방지가 시급한 프로그램이다.
+	private void doWhisper(String senderName, String receiverName, String data) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+		// base64 decoding
+		String sendMessage = "[" + LocalDateTime.now().format(formatter) + "]" + senderName + "님으로부터의 귓속말: " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
+		String myselfMessage = "[" + LocalDateTime.now().format(formatter) + "]" + receiverName + "님에게 귓속말: " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
+		synchronized(writersHashMap) {
+			for(Writer writer: writersHashMap.keySet()) {
+				// 해당되는 닉네임을 가진 사람에게만 broadcast한다.
+				if(receiverName.equals(writersHashMap.get(writer))) {
+					PrintWriter printWriter = (PrintWriter)writer;
+					printWriter.println(sendMessage);
+					printWriter.flush();
+				}
+				// 보낸 사람에게는 자신이 보낸 메시지가 보여야 한다.
+				if(senderName.equals(writersHashMap.get(writer))) {
+					PrintWriter printWriter = (PrintWriter)writer;
+					printWriter.println(myselfMessage);
+					printWriter.flush();
+				}
+			}
+		}
 	}
 
 	// 브로드캐스트
 	private void broadcast(String data) {
-		synchronized(listWriters) {
-			for(Writer writer: listWriters) {
+		synchronized(writersHashMap) {
+//			for(Writer writer: listWriters) {
+			for(Writer writer: writersHashMap.keySet()) {
 				PrintWriter printWriter = (PrintWriter)writer;
 				printWriter.println(data);
 				printWriter.flush();

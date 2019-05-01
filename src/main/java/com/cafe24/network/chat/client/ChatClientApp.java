@@ -4,6 +4,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class ChatClientApp {
@@ -18,7 +19,7 @@ public class ChatClientApp {
 			System.out.print(">>> ");
 			name = scanner.nextLine();
 			
-			if (name.isEmpty() == false ) {
+			if (name.isEmpty() == false) {
 				break;
 			}
 			
@@ -36,10 +37,10 @@ public class ChatClientApp {
 			socket.connect(new InetSocketAddress(SERVER_IP, com.cafe24.network.chat.server.ChatServer.PORT));
 			System.out.println("[client] connected");
 			
-			PrintWriter pr = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "utf-8"), true); // auto flush => true
+			PrintWriter pr = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true); // auto flush => true
 			
 			pr.println("join:" + name);
-			System.out.println(name + "님, 채팅방에 입장합니다...");
+			System.out.println(name + "님, 채팅방에 입장합니다.");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
