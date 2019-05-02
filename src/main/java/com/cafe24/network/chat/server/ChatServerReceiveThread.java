@@ -46,7 +46,7 @@ public class ChatServerReceiveThread extends Thread {
 				// 4. 프로토콜 분석
 				String[] tokens = request.split(":");
 				if("join".equals(tokens[0])) {
-					doJoin(tokens[1], pw);
+					doJoin(decodeBase64(tokens[1]), pw);
 				} else if("message".equals(tokens[0])) {
 					if(tokens.length < 2) {	// 아무것도 입력하지 않은 채로 send를 했을 경우, 빈 줄이 전달되도록 한다.
 						doMessage("");

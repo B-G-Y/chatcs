@@ -98,7 +98,8 @@ public class ChatWindow {
 		System.out.println(name + "님, 채팅을 종료합니다.");
 		try {
 			PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
-			pw.println("quit:" + name);
+			//pw.println("quit:" + encodeBase64(name));
+			pw.println("quit");	// 어차피 Server 단에서 뒤의 파라미터는 보지 않으므로 quit 문자열만 보낸다.
 			//pw.flush();	// flush를 사용할 경우 퇴장 메시지가 두 번 broadcast된다.
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -155,7 +156,8 @@ public class ChatWindow {
 	}
 	
 	// encode할 것이 많아져 별도의 메서드로 분리
-	private String encodeBase64(String data) {
+	// ChatClientApp에서도 사용할 것이므로 static 메서드로 생성하였다.
+	public static String encodeBase64(String data) {
 		return new String(Base64.getEncoder().encodeToString(data.getBytes(StandardCharsets.UTF_8)));
 	}
 	

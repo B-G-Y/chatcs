@@ -22,9 +22,6 @@ public class ChatClientApp {
 			if (name.isEmpty()) {
 				System.out.println("대화명은 한글자 이상 입력해야 합니다.\n");
 				continue;
-			} else if(name.contains(":")) {
-				System.out.println("대화명에는 ':'가 들어갈 수 없습니다.\n");
-				continue;
 			}
 			break;
 		}
@@ -42,7 +39,8 @@ public class ChatClientApp {
 			
 			PrintWriter pr = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true); // auto flush => true
 			
-			pr.println("join:" + name);
+			// 이름 자체도 encoding해서 :가 들어가도 제대로 생성되도록 한다.
+			pr.println("join:" + ChatWindow.encodeBase64(name));
 			System.out.println(name + "님, 채팅방에 입장합니다.");
 		} catch (IOException e) {
 			e.printStackTrace();
