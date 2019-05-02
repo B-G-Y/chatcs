@@ -174,6 +174,7 @@ public class ChatWindow {
 		}
 	}
 
+	// 입력을 받는 기능을 하는 스레드
 	class ChatClientReceiveThread extends Thread {
 		private BufferedReader br;
 		private Socket socket;
