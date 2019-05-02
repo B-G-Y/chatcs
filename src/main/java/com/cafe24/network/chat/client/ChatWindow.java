@@ -141,7 +141,7 @@ public class ChatWindow {
 		sendMessageToServer("message:" + encodeBase64(message));
 
 		// test
-//		updateTextArea(message);
+		// updateTextArea(message);
 	}
 
 	// 귓속말 처리

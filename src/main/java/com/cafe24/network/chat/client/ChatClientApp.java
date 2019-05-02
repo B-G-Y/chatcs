@@ -14,11 +14,10 @@ public class ChatClientApp {
 		Scanner scanner = new Scanner(System.in);
 
 		while( true ) {
-			
 			System.out.println("대화명을 입력하세요.");
 			System.out.print(">>> ");
 			name = scanner.nextLine();
-			
+			 
 			if (name.isEmpty()) {
 				System.out.println("대화명은 한글자 이상 입력해야 합니다.\n");
 				continue;

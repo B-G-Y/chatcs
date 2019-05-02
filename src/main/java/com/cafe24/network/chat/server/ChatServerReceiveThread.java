@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 
 public class ChatServerReceiveThread extends Thread {
 	private String nickname;
