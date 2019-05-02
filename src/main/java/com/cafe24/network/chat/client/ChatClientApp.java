@@ -19,11 +19,14 @@ public class ChatClientApp {
 			System.out.print(">>> ");
 			name = scanner.nextLine();
 			
-			if (name.isEmpty() == false) {
-				break;
+			if (name.isEmpty()) {
+				System.out.println("대화명은 한글자 이상 입력해야 합니다.\n");
+				continue;
+			} else if(name.contains(":")) {
+				System.out.println("대화명에는 ':'가 들어갈 수 없습니다.\n");
+				continue;
 			}
-			
-			System.out.println("대화명은 한글자 이상 입력해야 합니다.\n");
+			break;
 		}
 		
 		// 1. 소켓 만들고

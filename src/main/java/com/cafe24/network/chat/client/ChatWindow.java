@@ -115,7 +115,7 @@ public class ChatWindow {
 		System.exit(0);
 	}
 
-	// 채팅창 업데이트
+	// 채팅창 업데이트(사용 안함)
 	private void updateTextArea(String message) {
 		textArea.append(message);
 		textArea.append("\n");
@@ -123,6 +123,11 @@ public class ChatWindow {
 
 	private void sendMessage() {
 		String message = textField.getText();
+		
+		// 채팅 보낸 후 TextField 비워줌. 귓속말 사용할 때도 적용시키기 위해 앞에 작성함
+		textField.setText("");
+		textField.requestFocus();
+		
 		if(message.length() > 3 && "/w ".equals(message.substring(0, 3))) {	// 귓속말 명령이라고 인식한다.
 			// 인자가 충분하지 못하다면 오류 메시지 없이 sendMessage 해버린다.
 			String[] whisperMessage = message.split(" ");
@@ -131,41 +136,40 @@ public class ChatWindow {
 				return;
 			}
 		}
-		// 원본 메시지는 Base64로 인코딩하여 다른 문자 처리를 수월하게 한다.
-		String encodedMessage = new String(Base64.getEncoder().encodeToString(message.getBytes(StandardCharsets.UTF_8)));
+		
+		sendMessageToServer("message:" + encodeBase64(message));
 
-		try {	// 소켓 받은 것을 이용하여 PrintWriter로 Server에 보낸다.
-			PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
-			pw.println("message:" + encodedMessage);
-			pw.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		textField.setText("");	// 채팅 보낸 후 TextField 비워줌
-		textField.requestFocus();
 		// test
 //		updateTextArea(message);
 	}
 
-	// 귓속말 처리. 코드 중복이 많지만 일단 기능 구현에 집중.
+	// 귓속말 처리
 	private void whisperMessage(String data) {
 		data = data.substring(3);
 		int blankIndex = data.indexOf(" ");
 		String receiverName = data.substring(0, blankIndex);
 		String message = data.substring(blankIndex + 1);
-		String encodedMessage = new String(Base64.getEncoder().encodeToString(message.getBytes(StandardCharsets.UTF_8)));
 
-		try {	// 소켓 받은 것을 이용하여 PrintWriter로 Server에 보낸다.
+		// 이름이 깨지는 문제 때문에 이름도 메시지와 같이 UTF-8->Base64로 인코딩함 
+		sendMessageToServer("whisper:" + encodeBase64(name) + ":" + encodeBase64(receiverName) + ":" + encodeBase64(message));
+	}
+	
+	// encode할 것이 많아져 별도의 메서드로 분리
+	private String encodeBase64(String data) {
+		return new String(Base64.getEncoder().encodeToString(data.getBytes(StandardCharsets.UTF_8)));
+	}
+	
+	// 소켓 받은 것을 이용하여 PrintWriter로 Server에 보낸다.
+	// Server에게 message를 출력시킨다. 코드 중복 기능을 피하기 위해 별도의 메서드로 분리하였다.
+	private void sendMessageToServer(String message) {
+		try {
 			PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
-			pw.println("whisper:" + name + ":" + receiverName + ":" + encodedMessage);
+			// 원본 메시지는 Base64로 인코딩하여 다른 문자 처리를 수월하게 한다.
+			pw.println(message);
 			pw.flush();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		textField.setText("");	// 채팅 보낸 후 TextField 비워줌
-		textField.requestFocus();
 	}
 
 	class ChatClientReceiveThread extends Thread {

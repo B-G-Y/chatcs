@@ -59,7 +59,8 @@ public class ChatServerReceiveThread extends Thread {
 					if(tokens.length < 4) {	// 제대로 채워지지 않았을 경우, 귓속말 입력에 실패한다.
 						ChatServer.log("잘못된 명령어 입력 (" + tokens[0] + ")");
 					} else {
-						doWhisper(tokens[1], tokens[2], tokens[3]);
+						// cmd에서 깨지는 문제 해결 위해 닉네임도 Base64로 encoding/decoding한다. 
+						doWhisper(decodeBase64(tokens[1]), decodeBase64(tokens[2]), tokens[3]);
 					}
 				} else {
 					ChatServer.log("에러: 알 수 없는 요청 (" + tokens[0] + ")");
@@ -110,7 +111,7 @@ public class ChatServerReceiveThread extends Thread {
 	private void doMessage(String data) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		// base64 decoding
-		String message = "[" + LocalDateTime.now().format(formatter) + "]" + nickname + ": " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
+		String message = "[" + LocalDateTime.now().format(formatter) + "]" + nickname + ": " + decodeBase64(data);
 		broadcast(message);
 	}
 	
@@ -120,21 +121,17 @@ public class ChatServerReceiveThread extends Thread {
 	private void doWhisper(String senderName, String receiverName, String data) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		// base64 decoding
-		String sendMessage = "[" + LocalDateTime.now().format(formatter) + "]" + senderName + "님으로부터의 귓속말: " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
-		String myselfMessage = "[" + LocalDateTime.now().format(formatter) + "]" + receiverName + "님에게 귓속말: " + new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8);
+		String sendMessage = "[" + LocalDateTime.now().format(formatter) + "]" + senderName + "님으로부터의 귓속말: " + decodeBase64(data);	// 수신자에게 갈 메시지
+		String myselfMessage = "[" + LocalDateTime.now().format(formatter) + "]" + receiverName + "님에게 귓속말: " + decodeBase64(data);	// 발신자에게 갈 메시지
 		synchronized(writersHashMap) {
 			for(Writer writer: writersHashMap.keySet()) {
 				// 해당되는 닉네임을 가진 사람에게만 broadcast한다.
 				if(receiverName.equals(writersHashMap.get(writer))) {
-					PrintWriter printWriter = (PrintWriter)writer;
-					printWriter.println(sendMessage);
-					printWriter.flush();
+					sendMessageToClient(writer, sendMessage);
 				}
 				// 보낸 사람에게는 자신이 보낸 메시지가 보여야 한다.
 				if(senderName.equals(writersHashMap.get(writer))) {
-					PrintWriter printWriter = (PrintWriter)writer;
-					printWriter.println(myselfMessage);
-					printWriter.flush();
+					sendMessageToClient(writer, myselfMessage);
 				}
 			}
 		}
@@ -145,10 +142,20 @@ public class ChatServerReceiveThread extends Thread {
 		synchronized(writersHashMap) {
 //			for(Writer writer: listWriters) {
 			for(Writer writer: writersHashMap.keySet()) {
-				PrintWriter printWriter = (PrintWriter)writer;
-				printWriter.println(data);
-				printWriter.flush();
+				sendMessageToClient(writer, data);
 			}
 		}
+	}
+	
+	// decode할 것이 많아져 별도의 메서드로 분리
+	private String decodeBase64(String data) {
+		return new String(Base64.getDecoder().decode(data), StandardCharsets.UTF_8); 
+	}
+	
+	// 지정한 PrintWriter에게(=Client) message를 출력시킨다. 코드 중복 기능을 피하기 위해 별도의 메서드로 분리하였다.
+	private void sendMessageToClient(Writer writer, String message) {
+		PrintWriter printWriter = (PrintWriter)writer;
+		printWriter.println(message);
+		printWriter.flush();
 	}
 }
