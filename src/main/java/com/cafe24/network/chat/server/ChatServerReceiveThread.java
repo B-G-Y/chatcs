@@ -112,11 +112,28 @@ public class ChatServerReceiveThread extends Thread {
 	}
 
 	// 메시지 입력
-	private void doMessage(String data) {
+	private void doMessage(String data) {	
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+		//!도움말인 경우 정보제공
+		if(data.equals("!도움말")){
+			String message = "[" + LocalDateTime.now().format(formatter) + "]" 
+			  + "Server" + ": " + " 귓속말기능 :  /w <nickname> <message> ";
+			broadcast(message);
+							
+			message = "[" + LocalDateTime.now().format(formatter) + "]" 
+			  + "Server" + ": " + " 지우개기능 :  \"!지우개\" : 20칸 지움 ";
+			broadcast(message);
+		}else if(data.equals("!지우개")){
+			//!지우개인 경우 채팅20칸 올림
+			String message = " ";
+			for(int i=1; i<20; i++) {
+				broadcast(message);
+			}
+		}else{				
 		// base64 decoding
 		String message = "[" + LocalDateTime.now().format(formatter) + "]" + nickname + ": " + decodeBase64(data);
 		broadcast(message);
+		}
 	}
 	
 	// 귓속말
